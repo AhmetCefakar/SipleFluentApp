@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -10,18 +12,11 @@ namespace FluentExample
     {
         static void Main(string[] args)
         {
-            // First Way Flunt notation. 
             var ironTank = FluentFactory<Tank>
                 .Instance(new Tank())
-                .GiveValue("Type", "T81")
-                .GiveValue("Range", 470.90M)
-                .GiveValue("Side", "Aliens")
-                .Take();
-
-            var burki = FluentFactory<Player>
-                .Instance(new Player())
-                .GiveValue("NickName", "Burki")
-                .GiveValue("LastLevel", 35)
+                .GiveValue(t => t.Range, 400.23M)
+                .GiveValue(t => t.Side, "Me")
+                .GiveValue(t => t.Type, "T48")
                 .Take();
 
 
@@ -34,7 +29,8 @@ namespace FluentExample
     // Fluent uygulamak için generic olarak farklı sınıflar kullanılarak çalışmak için 
     interface IFactory<T>
     {
-        IFactory<T> GiveValue(string PropertyName, object Value);
+        //IFactory<T> GiveValue(string PropertyName, object Value);
+        IFactory<T> GiveValue(Expression<Func<T, object>>Property,object Value);
         T Take(); // New'lenmiş olarak generic nesne döndüren method imzası
     }
 
@@ -48,14 +44,31 @@ namespace FluentExample
 
         T _instance;
 
-        public IFactory<T> GiveValue(string PropertyName, object Value)
+        //public IFactory<T> GiveValue(string PropertyName, object Value)
+        //{
+        //    var pInfo = _instance.GetType().GetProperty(PropertyName);
+        //    if (pInfo != null)
+        //    {
+        //        pInfo.SetValue(_instance, Value);
+        //    }
+
+        //    return this;
+        //}
+
+        public IFactory<T> GiveValue(Expression<Func<T, object>> Property, object Value)
         {
-            var pInfo = _instance.GetType().GetProperty(PropertyName);
-            if (pInfo != null)
+            PropertyInfo pInfo = null;
+
+            if (Property.Body is MemberExpression)
             {
-                pInfo.SetValue(_instance, Value);
+                pInfo = (Property.Body as MemberExpression).Member as PropertyInfo;
+            }
+            else
+            {
+                pInfo = ((Property.Body as UnaryExpression).Operand as MemberExpression).Member as PropertyInfo; 
             }
 
+            pInfo.SetValue(_instance, Value);
             return this;
         }
 
